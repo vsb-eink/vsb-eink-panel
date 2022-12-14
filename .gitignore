@@ -1,0 +1,7 @@
+# build files
+build/
+cmake-build-*/
+
+# cached dependencies
+managed_components/
+components/inkplate

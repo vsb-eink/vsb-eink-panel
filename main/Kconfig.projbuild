@@ -1,0 +1,19 @@
+menu "E-Ink Panel"
+    config ESP_WIFI_SSID_FALLBACK
+        string "WiFi SSID"
+        default "TUONET-IOT"
+        help
+            Name of the WiFi network to connect to
+
+    config ESP_WIFI_PASSWORD_FALLBACK
+        string "WiFi Password"
+        default "tuo12345"
+        help
+            Password of the WiFi network to connect to
+
+    config VSB_EINK_WEBSOCKET_URL_FALLBACK
+        string "Hamilton WebSocket Endpoint"
+        default "wss://eink.proxy.lksv.cz"
+        help
+            URL of the VSB E-INK WebSocket endpoint
+endmenu

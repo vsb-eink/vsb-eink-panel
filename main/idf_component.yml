@@ -1,0 +1,8 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/esp_websocket_client: "*"
+  inkplate:
+    path: ../components/inkplate
+    version: "*"
+  idf:
+    version: ">=5.0"
