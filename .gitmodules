@@ -1,4 +1,4 @@
 [submodule "components/inkplate"]
 	path = components/inkplate
 	url = https://github.com/turgu1/ESP-IDF-InkPlate.git
-	branch = v0.9.8
+	branch = idf-v5.0-support
