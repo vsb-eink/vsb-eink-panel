@@ -25,14 +25,12 @@ static void perform_ota_update_handler(void *handler_args, esp_event_base_t base
         return;
     }
 
-    esp_http_client_config_t config = {
-            .url = data->data_ptr,
-            .crt_bundle_attach = esp_crt_bundle_attach,
-    };
+    esp_http_client_config_t config = {};
+    config.url = data->data_ptr;
+    config.crt_bundle_attach = esp_crt_bundle_attach;
 
-    esp_https_ota_config_t ota_config = {
-            .http_config = &config,
-    };
+    esp_https_ota_config_t ota_config = {};
+    ota_config.http_config = &config;
 
     ESP_LOGI(TAG, "Starting OTA update from %s", data->data_ptr);
     esp_err_t ret = esp_https_ota(&ota_config);

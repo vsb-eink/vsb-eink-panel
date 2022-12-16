@@ -1,10 +1,10 @@
 dependencies:
   espressif/esp_websocket_client:
-    component_hash: 21b3c7f85d6266d39d58c371d1143f1dbc75970d39208f5e5df6eb66106dfa04
+    component_hash: fe199a31269568cfdf67b52c8a338f8befa4d3385041b9e1a601ed3ee10b5c64
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 0.0.3
+    version: 0.0.4
   idf:
     component_hash: null
     source:
@@ -15,7 +15,7 @@ dependencies:
     source:
       path: /home/marek/Projekty/vsb-eink-panel/components/inkplate
       type: local
-    version: '*'
-manifest_hash: f1b547785b06d606d5eeec437ca8212ff95be24723921400490f2c57e0de4e3c
+    version: 0.9.8
+manifest_hash: 46de1c36bab38c5ac087517c1f03b4b7aaf07765a4212d209baa116bb2d35166
 target: esp32
 version: 1.0.0

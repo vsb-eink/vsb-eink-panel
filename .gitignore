@@ -5,3 +5,12 @@ cmake-build-*/
 # cached dependencies
 managed_components/
 components/inkplate
+
+# ide files
+.idea/
+
+# sdkconfig backup
+sdkconfig.old
+
+# local configuration (TODO: make versioned)
+provisioning/
