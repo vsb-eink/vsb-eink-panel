@@ -2,8 +2,8 @@ name: Build a release
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - '**'
 
 jobs:
   build:
@@ -20,3 +20,17 @@ jobs:
           esp_idf_version: v5.0
           target: esp32
           path: .
+
+      - name: Merge the build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          esp_idf_version: v5.0
+          target: esp32
+          command: python scripts/pack_firmware.py
+
+      - name: Release the build artifacts
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "images/*.bin,build/*.bin"
+          allowUpdates: true
+          artifactErrorsFailBuild: true

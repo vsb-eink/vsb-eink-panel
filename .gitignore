@@ -2,6 +2,9 @@
 build/
 cmake-build-*/
 
+# built files
+images/
+
 # cached dependencies
 managed_components/
 components/inkplate
@@ -14,3 +17,5 @@ sdkconfig.old
 
 # local configuration (TODO: make versioned)
 provisioning/
+!provisioning/example.nvs.csv
+!provisioning/images/example.nvs.bin
