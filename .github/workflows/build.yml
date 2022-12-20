@@ -31,6 +31,6 @@ jobs:
       - name: Release the build artifacts
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "images/*.bin,build/*.bin"
+          artifacts: "images/*.bin,build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
           allowUpdates: true
           artifactErrorsFailBuild: true

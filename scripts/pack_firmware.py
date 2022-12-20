@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import os
+import re
 from pathlib import Path
 
 PYTHON = sys.executable
@@ -19,7 +20,16 @@ def get_project_version():
 
 
 def get_project_name():
-    return os.path.basename(PROJECT_DIR)
+    with open(Path(PROJECT_DIR, 'CMakeLists.txt')) as f:
+        pattern = re.compile(r'^project\((.+)\)$', re.MULTILINE)
+        contents = f.read()
+        match = pattern.search(contents)
+
+        if match is None:
+            print('failed to find project name in CMakeLists.txt, using project basename', file=sys.stderr)
+            return os.path.basename(PROJECT_DIR)
+        else:
+            return match.group(1)
 
 
 def main():
