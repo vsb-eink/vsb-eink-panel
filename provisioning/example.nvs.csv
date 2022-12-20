@@ -1,0 +1,7 @@
+key,type,encoding,value
+eeprom,namespace,,
+eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAAAAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
+vsb_eink,namespace,,
+wifi_ssid,data,string,"TUONET-IOT"
+wifi_password,data,string,"tuo12345"
+websocket_url,data,string,"wss://eink.lksv.cz/gateway/ws"
