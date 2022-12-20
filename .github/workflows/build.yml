@@ -22,7 +22,7 @@ jobs:
           path: .
 
       - name: Merge the build artifacts
-        uses: actions/upload-artifact@v2
+        uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.0
           target: esp32
