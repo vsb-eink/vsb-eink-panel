@@ -50,18 +50,18 @@ def main():
 
     args = args_parser.parse_args()
 
-    nvs_partition_file = tempfile.TemporaryFile() if args.flash else Path(args.output)
+    nvs_partition_file = tempfile.NamedTemporaryFile(suffix='.bin') if args.flash else Path(args.output)
 
     try:
-        subprocess.check_call([PYTHON, NVS_PARTITION_GEN_PY, 'generate', args.nvs_config, nvs_partition_file, "0x5000"])
-        print('successfully generated nvs partition at {}'.format(nvs_partition_file))
+        subprocess.check_call([PYTHON, NVS_PARTITION_GEN_PY, 'generate', args.nvs_config, nvs_partition_file.name, "0x5000"])
+        print('successfully generated nvs partition at {}'.format(nvs_partition_file.name))
     except subprocess.CalledProcessError as e:
         print('failed to generate nvs partition', file=sys.stderr)
         sys.exit(e.returncode)
 
     if args.flash:
         try:
-            subprocess.check_call([PYTHON, PARTTOOL_PY, 'write_partition', '--partition-name=nvs', '--input', nvs_partition_file])
+            subprocess.check_call([PYTHON, PARTTOOL_PY, 'write_partition', '--partition-name=nvs', '--input', nvs_partition_file.name])
             print('successfully written nvs data to the connected panel')
         except subprocess.CalledProcessError as e:
             print('failed to write nvs partition')
