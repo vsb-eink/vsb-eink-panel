@@ -13,9 +13,9 @@ dependencies:
   inkplate:
     component_hash: null
     source:
-      path: /home/marek/Projekty/vsb-eink-panel/components/inkplate
+      path: /home/marek/Projekty/ESP-IDF-InkPlate
       type: local
     version: 0.9.8
-manifest_hash: 46de1c36bab38c5ac087517c1f03b4b7aaf07765a4212d209baa116bb2d35166
+manifest_hash: af923c93ef5cdb517181c49270222f99ee266c17a2bbb8ebc087e1e8ea5b18da
 target: esp32
 version: 1.0.0
