@@ -1,21 +1,15 @@
 dependencies:
-  espressif/esp_websocket_client:
-    component_hash: fe199a31269568cfdf67b52c8a338f8befa4d3385041b9e1a601ed3ee10b5c64
-    source:
-      service_url: https://api.components.espressif.com/
-      type: service
-    version: 0.0.4
   idf:
     component_hash: null
     source:
       type: idf
-    version: 5.0.0
+    version: 5.0.2
   inkplate:
     component_hash: null
     source:
       path: /home/marek/Projekty/ESP-IDF-InkPlate
       type: local
     version: 0.9.8
-manifest_hash: af923c93ef5cdb517181c49270222f99ee266c17a2bbb8ebc087e1e8ea5b18da
+manifest_hash: f381f5a4debbc040752828db14ca2ec27108363c0447b638e2de2bc1dcd288b9
 target: esp32
 version: 1.0.0

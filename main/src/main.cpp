@@ -1,91 +1,118 @@
-#include "nvs.h"
-#include "esp_event.h"
+#include "esp_crt_bundle.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_netif.h"
+#include "mqtt_client.h"
+#include "esp_log.h"
 
-#include "inkplate.hpp"
+#include "services/inkplate_static.h"
 
-#include "tasks/panel/panel_task.hpp"
-#include "tasks/system/system_task.hpp"
-#include "tasks/websocket/websocket_task.hpp"
+static const char *TAG = "Main";
 
-#include "events.hpp"
-#include "config.hpp"
-#include "utils.hpp"
-
-static constexpr auto* TAG = "main";
-
-ESP_EVENT_DEFINE_BASE(EINK_INTERNAL_EVENT_BASE);
-
-extern "C" void app_main() {
-    ESP_LOGI(TAG, "Initializing NVS");
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
+static void log_error_if_nonzero(const char *message, int error_code) {
+    if (error_code != 0) {
+        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
     }
-    ESP_ERROR_CHECK(ret);
-    ESP_LOGI(TAG, "Initialized NVS");
+}
 
-    ESP_LOGI(TAG, "Initializing display driver");
-    Inkplate inkplate(DisplayMode::INKPLATE_1BIT);
+static void mqtt_connected_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    ESP_LOGI(TAG, "Connected to MQTT broker");
+}
+
+static void mqtt_disconnected_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    ESP_LOGI(TAG, "Disconnected from MQTT broker");
+}
+
+static void mqtt_subscribed_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    esp_mqtt_client_handle_t client = event->client;
+
+    ESP_LOGI(TAG, "Subscribed to %.*s", event->topic_len, event->topic);
+}
+
+static void mqtt_unsubscribed_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    esp_mqtt_client_handle_t client = event->client;
+
+    ESP_LOGI(TAG, "Unsubscribed from %.*s", event->topic_len, event->topic);
+}
+
+static void mqtt_published_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    esp_mqtt_client_handle_t client = event->client;
+
+    ESP_LOGI(TAG, "Published to %.*s", event->topic_len, event->topic);
+}
+
+static void mqtt_error_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    esp_mqtt_client_handle_t client = event->client;
+
+    ESP_LOGI(TAG, "Error event: %d", event->error_handle->error_type);
+
+    if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+        log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
+        log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
+        log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
+        ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+    }
+}
+
+static void mqtt_data_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
+    esp_mqtt_client_handle_t client = event->client;
+
+    ESP_LOGI(TAG, "Received data from %.*s", event->topic_len, event->topic);
+
+    printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+    printf("DATA=%.*s\r\n", event->data_len, event->data);
+}
+
+[[noreturn]]
+void mainTask(void *param) {
+    ESP_LOGI(TAG, "Main task has started");
+    auto& inkplate = InkplateStatic::getInstance();
     inkplate.begin();
-    ESP_LOGI(TAG, "Initialized display driver");
 
-    ESP_LOGI(TAG, "Initializing persistent config");
-    Config configStore;
-    ESP_ERROR_CHECK(configStore.init());
-    ESP_LOGI(TAG, "Initialized persistent config");
+    inkplate.clearDisplay();
+    inkplate.display();
 
-    ESP_LOGI(TAG, "Connecting to wifi");
-    auto wifi_ssid = configStore.get_wifi_ssid();
-    auto wifi_password = configStore.get_wifi_password();
-    inkplate.joinAP(wifi_ssid.c_str(), wifi_password.c_str());
-    ESP_LOGI(TAG, "Connected to wifi");
+    inkplate.joinAP("TurrisLukasu", "pekamalu");
 
-    ESP_LOGI(TAG, "Initializing internal event loop");
-    esp_event_loop_handle_t eink_internal_event_loop_handle;
-    esp_event_loop_args_t eink_internal_event_loop_config = {
-            .queue_size = 16,
-            .task_name = "eink_internal_event_loop_task",
-            .task_priority = 5,
-            .task_stack_size = 10000,
-            .task_core_id = 1
-    };
-    esp_event_loop_create(&eink_internal_event_loop_config, &eink_internal_event_loop_handle);
-    configASSERT(eink_internal_event_loop_handle);
-    ESP_LOGI(TAG, "Initialized internal event loop");
+    esp_mqtt_client_config_t mqtt_cfg = {};
+    mqtt_cfg.broker.address.uri = "mqtt://192.168.1.164";
+    mqtt_cfg.broker.address.port = 1883;
+    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
 
-    ESP_LOGI(TAG, "Starting panel task");
-    panel_task_config_t panel_task_config = {
-            .eink_internal_event_loop_handle = eink_internal_event_loop_handle,
-            .config = &configStore,
-            .inkplate = &inkplate
-    };
-    TaskHandle_t panel_task_handle;
-    xTaskCreate(&panel_task, "panel_task", 4096, &panel_task_config, 5, &panel_task_handle);
-    configASSERT(panel_task_handle);
-    ESP_LOGI(TAG, "Started panel task");
+    esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_CONNECTED, mqtt_connected_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_DISCONNECTED, mqtt_disconnected_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_SUBSCRIBED, mqtt_subscribed_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_UNSUBSCRIBED, mqtt_unsubscribed_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_PUBLISHED, mqtt_published_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_ERROR, mqtt_error_event_handler, nullptr);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_DATA, mqtt_data_event_handler, nullptr);
 
-    ESP_LOGI(TAG, "Starting system task");
-    system_task_config_t system_task_config = {
-            .eink_internal_event_loop_handle = eink_internal_event_loop_handle,
-            .config = &configStore,
-    };
-    TaskHandle_t system_task_handle;
-    xTaskCreate(&system_task, "system_task", 4096, &system_task_config, 5, &system_task_handle);
-    configASSERT(system_task_handle);
-    ESP_LOGI(TAG, "Started system task");
+    esp_mqtt_client_start(mqtt_client);
 
-    ESP_LOGI(TAG, "Starting websocket task");
-    websocket_task_config_t websocket_task_config = {
-            .eink_internal_event_loop_handle = eink_internal_event_loop_handle,
-            .config = &configStore,
-    };
-    TaskHandle_t websocket_task_handle;
-    xTaskCreate(&websocket_task, "websocket_task", 4096, &websocket_task_config, 5, &websocket_task_handle);
-    configASSERT(websocket_task_handle);
-    ESP_LOGI(TAG, "Started websocket task");
+    int msg_id;
+    msg_id = esp_mqtt_client_subscribe(mqtt_client, "/topic/qos0", 0);
+    ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-    for (;;) {
+    msg_id = esp_mqtt_client_subscribe(mqtt_client, "/topic/qos1", 1);
+    ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+    while (true) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+}
+
+
+#define STACK_SIZE 10000
+
+extern "C" void app_main() {
+    TaskHandle_t xHandle = nullptr;
+
+    xTaskCreate(mainTask, "mainTask", STACK_SIZE, (void *) 1, tskIDLE_PRIORITY, &xHandle);
+    configASSERT(xHandle);
 }

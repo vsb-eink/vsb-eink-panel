@@ -8,7 +8,6 @@ images/*
 
 # cached dependencies
 managed_components/
-components/inkplate
 
 # ide files
 .idea/
