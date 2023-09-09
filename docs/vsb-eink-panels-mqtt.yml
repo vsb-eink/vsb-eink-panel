@@ -1,0 +1,218 @@
+asyncapi: 2.6.0
+info:
+  title: VSB E-Ink Panels MQTT
+  version: 1.0.0
+  description: MQTT API for VSB E-Ink Panels
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  local:
+    url: mqtt://localhost:1883
+    protocol: mqtt
+    description: Mosquitto MQTT broker
+
+channels:
+  vsb-eink/{panelId}/config:
+    description: Topic of a panel configuration status
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    publish:
+      summary: Publishes configuration of a panel
+      message:
+        $ref: "#/components/messages/PanelConfigStatus"
+  
+  vsb-eink/{panelId}/config/set:
+    description: Topic for updating a panel configuration
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: updatePanelConfig
+      summary: Updates configuration of a panel
+      message:
+        $ref: "#/components/messages/PanelConfigUpdate"
+  
+  vsb-eink/{panelId}/config/get:
+    description: Topic for requesting a panel configuration status
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: getPanelConfig
+      summary: Requests configuration of a panel
+  
+  vsb-eink/{panelId}/display_1bit/set:
+    description: Topic for updating a panel display with 1-bit images
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: updatePanelDisplay1Bit
+      summary: Updates display of a panel
+      message:
+        $ref: "#/components/messages/PanelDisplay1Bit"
+  
+  vsb-eink/{panelId}/display_3bit/set:
+    description: Topic for updating a panel display with 3-bit images
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: updatePanelDisplay3Bit
+      summary: Updates display of a panel
+      message:
+        $ref: "#/components/messages/PanelDisplay3Bit"
+  
+  vsb-eink/{panelId}/firmware/set:
+    description: Topic for updating a panel firmware
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: updatePanelFirmware
+      summary: Updates firmware of a panel
+      message:
+        $ref: "#/components/messages/PanelFirmwareUpdate"
+  
+  vsb-eink/{panelId}/firmware/get:
+    description: Topic for requesting a panel firmware update status
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: getPanelFirmware
+      summary: Requests status of a panel firmware update
+
+components:
+  parameters:
+    panelId:
+      description: ID of a panel
+      schema:
+        type: string
+  
+  messages:
+    PanelConfigStatus:
+      name: PanelConfigStatus
+      title: Panel Config Status
+      summary: Status of a panel configuration
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PanelConfigStatusPayload"
+    
+    PanelConfigUpdate:
+      name: PanelConfigUpdate
+      title: Panel Config Update
+      summary: Update of a panel configuration
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PanelConfigUpdatePayload"
+    
+    PanelDisplay1Bit:
+      name: PanelDisplay1Bit
+      title: Panel Display 1-Bit
+      summary: 1-bit image for a panel display
+      contentType: application/octet-stream
+      payload:
+        $ref: "#/components/schemas/PanelDisplay1BitPayload"
+    
+    PanelDisplay3Bit:
+      name: PanelDisplay3Bit
+      title: Panel Display 3-Bit
+      summary: 3-bit image for a panel display
+      contentType: application/octet-stream
+      payload:
+        $ref: "#/components/schemas/PanelDisplay3BitPayload"
+    
+    PanelFirmwareUpdate:
+      name: PanelFirmwareUpdate
+      title: Panel Firmware Update
+      summary: Update of a panel firmware
+      contentType: text/plain
+      payload:
+        $ref: "#/components/schemas/PanelFirmwareUpdatePayload"
+  
+  schemas:
+    PanelConfigStatusPayload:
+      type: object
+      properties:
+        panelId:
+          type: string
+          description: ID of a panel
+        firmware:
+          type: object
+          description: Firmware configuration
+          properties:
+            version:
+              type: string
+              description: Version of a firmware
+          required:
+            - version
+        wifi:
+          type: object
+          description: WiFi configuration
+          properties:
+            rssi:
+              type: integer
+              description: Signal strength of the currently used WiFi network
+            ssid:
+              type: string
+              description: SSID of the currently used WiFi network
+          required:
+            - rssi
+            - ssid
+        mqtt:
+          type: object
+          description: MQTT configuration
+          properties:
+            uri:
+              type: string
+              description: Host of a MQTT brokers
+          required:
+            - uri
+      required:
+        - panelId
+        - wifi
+        - mqtt
+        - firmware
+      
+    PanelConfigUpdatePayload:
+      type: object
+      properties:
+        panelId:
+          type: string
+          description: ID of a panel
+        wifi:
+          type: object
+          description: WiFi configuration
+          properties:
+            ssid:
+              type: string
+              description: SSID of a WiFi network to use
+            password:
+              type: string
+              description: Password of a WiFi network to use
+        mqtt:
+          type: object
+          description: MQTT configuration
+          properties:
+            uri:
+              type: string
+              description: Host of a MQTT brokers
+    
+    PanelDisplay1BitPayload:
+      description: 1bit monochrome image encoded as 1 bit per pixel image (little-endian)
+      type: string
+      format: binary
+    
+    PanelDisplay3BitPayload:
+      description: 3bit grayscale image encoded as 4 bits per pixel image (little-endian)
+      type: string
+      format: binary
+    
+    PanelFirmwareUpdatePayload:
+      description: URL of a firmware file to download
+      type: string
+      format: uri
