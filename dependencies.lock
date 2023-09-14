@@ -1,4 +1,16 @@
 dependencies:
+  espressif/esp-idf-cxx:
+    component_hash: df7921090d6601b268b99b5d54d2f53bb5ea25dbd58cc53961ef7784326621de
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 1.0.1-beta
+  espressif/esp_mqtt_cxx:
+    component_hash: d65e459793ff320f81b57fbcd451610636e8175dcd33512481420eb476cae5c5
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.1.0
   idf:
     component_hash: null
     source:
@@ -7,9 +19,9 @@ dependencies:
   inkplate:
     component_hash: null
     source:
-      path: /home/marek/Projekty/ESP-IDF-InkPlate
+      path: C:\Users\marek\GitHub\vsb-eink-panel\components\inkplate
       type: local
     version: 0.9.8
-manifest_hash: f381f5a4debbc040752828db14ca2ec27108363c0447b638e2de2bc1dcd288b9
+manifest_hash: f158ec0beda47cfe70a5d1f7c6819aac73246c35b35a7bb4c650b84d91472a65
 target: esp32
 version: 1.0.0

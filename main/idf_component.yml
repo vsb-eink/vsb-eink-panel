@@ -1,5 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
+  espressif/esp_mqtt_cxx: "^0.1.0"
   inkplate:
     path: ../components/inkplate
     version: "*"

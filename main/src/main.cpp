@@ -1,72 +1,45 @@
-#include "esp_crt_bundle.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_netif.h"
-#include "mqtt_client.h"
-#include "esp_log.h"
+#include <esp_crt_bundle.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_netif.h>
+#include <esp_log.h>
+#include <memory>
+#include <esp_mqtt.hpp>
+#include <esp_mqtt_client_config.hpp>
 
 #include "services/inkplate_static.h"
+#include "mqtt/topics/draw_bitmap_1bit/handler.hpp"
+
+namespace mqtt = idf::mqtt;
 
 static const char *TAG = "Main";
 
-static void log_error_if_nonzero(const char *message, int error_code) {
-    if (error_code != 0) {
-        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
+class MyClient final : public mqtt::Client {
+public:
+    using mqtt::Client::Client;
+
+    MyClient(const std::string& base_topic, const mqtt::BrokerConfiguration& broker, const mqtt::ClientCredentials& credentials, const mqtt::Configuration& config)
+            : mqtt::Client{broker, credentials, config}, messages(base_topic + "messages/received"), sent_load(base_topic + "load/+/sent"){}
+
+private:
+    void on_connected(const esp_mqtt_event_handle_t event) override
+    {
+        using mqtt::QoS;
+        subscribe(messages.get());
+        subscribe(sent_load.get(), QoS::AtMostOnce);
     }
-}
-
-static void mqtt_connected_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    ESP_LOGI(TAG, "Connected to MQTT broker");
-}
-
-static void mqtt_disconnected_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    ESP_LOGI(TAG, "Disconnected from MQTT broker");
-}
-
-static void mqtt_subscribed_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
-    esp_mqtt_client_handle_t client = event->client;
-
-    ESP_LOGI(TAG, "Subscribed to %.*s", event->topic_len, event->topic);
-}
-
-static void mqtt_unsubscribed_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
-    esp_mqtt_client_handle_t client = event->client;
-
-    ESP_LOGI(TAG, "Unsubscribed from %.*s", event->topic_len, event->topic);
-}
-
-static void mqtt_published_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
-    esp_mqtt_client_handle_t client = event->client;
-
-    ESP_LOGI(TAG, "Published to %.*s", event->topic_len, event->topic);
-}
-
-static void mqtt_error_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
-    esp_mqtt_client_handle_t client = event->client;
-
-    ESP_LOGI(TAG, "Error event: %d", event->error_handle->error_type);
-
-    if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
-        log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
-        log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
-        log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
-        ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+    void on_data(const esp_mqtt_event_handle_t event) override
+    {
+        printf("Subscribed to %.*s\r\n", event->topic_len, event->topic);
+        if (messages.match(event->topic, event->topic_len)) {
+            ESP_LOGI(TAG, "Received in the %.*s topic", event->topic_len, event->topic);
+        } else if (sent_load.match(event->topic, event->topic_len)) {
+            ESP_LOGI(TAG, "Received in the sent_load topic");
+        }
     }
-}
-
-static void mqtt_data_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-    auto event = static_cast<esp_mqtt_event_handle_t>(event_data);
-    esp_mqtt_client_handle_t client = event->client;
-
-    ESP_LOGI(TAG, "Received data from %.*s", event->topic_len, event->topic);
-
-    printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-    printf("DATA=%.*s\r\n", event->data_len, event->data);
-}
+    mqtt::Filter messages{""};
+    mqtt::Filter sent_load{""};
+};
 
 [[noreturn]]
 void mainTask(void *param) {
@@ -79,31 +52,18 @@ void mainTask(void *param) {
 
     inkplate.joinAP("TurrisLukasu", "pekamalu");
 
-    esp_mqtt_client_config_t mqtt_cfg = {};
-    mqtt_cfg.broker.address.uri = "mqtt://192.168.1.164";
-    mqtt_cfg.broker.address.port = 1883;
-    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+    mqtt::BrokerConfiguration broker{
+            .address = {mqtt::URI{std::string{"mqtt://192.168.1.164:1883"}}},
+            .security =  mqtt::Insecure{}
+    };
+    mqtt::ClientCredentials credentials{};
+    mqtt::Configuration config{};
 
-    esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_CONNECTED, mqtt_connected_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_DISCONNECTED, mqtt_disconnected_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_SUBSCRIBED, mqtt_subscribed_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_UNSUBSCRIBED, mqtt_unsubscribed_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_PUBLISHED, mqtt_published_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_ERROR, mqtt_error_event_handler, nullptr);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_DATA, mqtt_data_event_handler, nullptr);
-
-    esp_mqtt_client_start(mqtt_client);
-
-    int msg_id;
-    msg_id = esp_mqtt_client_subscribe(mqtt_client, "/topic/qos0", 0);
-    ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-    msg_id = esp_mqtt_client_subscribe(mqtt_client, "/topic/qos1", 1);
-    ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+    MyClient client{"$SYS/broker/", broker, credentials, config};
 
     while (true) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        constexpr TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+        vTaskDelay(xDelay);
     }
 }
 
