@@ -19,9 +19,9 @@ dependencies:
   inkplate:
     component_hash: null
     source:
-      path: C:\Users\marek\GitHub\vsb-eink-panel\components\inkplate
+      path: /home/marek/Projekty/vsb-eink-panel/components/inkplate
       type: local
     version: 0.9.8
-manifest_hash: f158ec0beda47cfe70a5d1f7c6819aac73246c35b35a7bb4c650b84d91472a65
+manifest_hash: 74c3f7e9e721e8c1f5a4414745b6a0c47904f98940bb557b8617dc39ea449826
 target: esp32
 version: 1.0.0
