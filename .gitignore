@@ -12,7 +12,8 @@ managed_components/
 # ide files
 .idea/
 
-# sdkconfig backup
+# sdkconfig
+sdkconfig
 sdkconfig.old
 
 # local configuration (TODO: make versioned)
