@@ -44,29 +44,29 @@ channels:
       operationId: getPanelConfig
       summary: Requests configuration of a panel
   
-  vsb-eink/{panelId}/display_1bit/set:
+  vsb-eink/{panelId}/display/raw_1bpp/set:
     description: Topic for updating a panel display with 1-bit images
     parameters:
       panelId:
         $ref: "#/components/parameters/panelId"
     subscribe:
-      operationId: updatePanelDisplay1Bit
+      operationId: updatePanelDisplayRaw1Bpp
       summary: Updates display of a panel
       message:
-        $ref: "#/components/messages/PanelDisplay1Bit"
+        $ref: "#/components/messages/PanelDisplayRaw1Bpp"
   
-  vsb-eink/{panelId}/display_3bit/set:
+  vsb-eink/{panelId}/display/raw_4bpp/set:
     description: Topic for updating a panel display with 3-bit images
     parameters:
       panelId:
         $ref: "#/components/parameters/panelId"
     subscribe:
-      operationId: updatePanelDisplay3Bit
+      operationId: updatePanelDisplayRaw4Bpp
       summary: Updates display of a panel
       message:
-        $ref: "#/components/messages/PanelDisplay3Bit"
+        $ref: "#/components/messages/PanelDisplayRaw4Bpp"
   
-  vsb-eink/{panelId}/firmware_update/set:
+  vsb-eink/{panelId}/firmware/update/set:
     description: Topic for updating a panel firmware
     parameters:
       panelId:
@@ -76,15 +76,6 @@ channels:
       summary: Updates firmware of a panel
       message:
         $ref: "#/components/messages/PanelFirmwareUpdate"
-  
-  vsb-eink/{panelId}/firmware_update/get:
-    description: Topic for requesting a panel firmware update status
-    parameters:
-      panelId:
-        $ref: "#/components/parameters/panelId"
-    subscribe:
-      operationId: getPanelFirmware
-      summary: Requests status of a panel firmware update
 
 components:
   parameters:
@@ -110,21 +101,21 @@ components:
       payload:
         $ref: "#/components/schemas/PanelConfigUpdatePayload"
     
-    PanelDisplay1Bit:
-      name: PanelDisplay1Bit
+    PanelDisplayRaw1Bpp:
+      name: PanelDisplayRaw1Bpp
       title: Panel Display 1-Bit
       summary: 1-bit image for a panel display
       contentType: application/octet-stream
       payload:
-        $ref: "#/components/schemas/PanelDisplay1BitPayload"
+        $ref: "#/components/schemas/PanelDisplayRaw1BppPayload"
     
-    PanelDisplay3Bit:
-      name: PanelDisplay3Bit
-      title: Panel Display 3-Bit
+    PanelDisplayRaw4Bpp:
+      name: PanelDisplayRaw4Bpp
+      title: Panel Display 3-bit
       summary: 3-bit image for a panel display
       contentType: application/octet-stream
       payload:
-        $ref: "#/components/schemas/PanelDisplay3BitPayload"
+        $ref: "#/components/schemas/PanelDisplayRaw4BppPayload"
     
     PanelFirmwareUpdate:
       name: PanelFirmwareUpdate
@@ -202,12 +193,12 @@ components:
               type: string
               description: Host of a MQTT brokers
     
-    PanelDisplay1BitPayload:
+    PanelDisplayRaw1BppPayload:
       description: 1bit monochrome image encoded as 1 bit per pixel image (little-endian)
       type: string
       format: binary
     
-    PanelDisplay3BitPayload:
+    PanelDisplayRaw4BppPayload:
       description: 3bit grayscale image encoded as 4 bits per pixel image (little-endian)
       type: string
       format: binary
