@@ -1,8 +1,8 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 
-#include "config.hpp"
-#include "utils.hpp"
+#include "config.h"
+#include "utils.h"
 
 static constexpr auto* TAG = "config-store";
 
@@ -13,6 +13,15 @@ Config::Config():
 esp_err_t Config::set_defaults() {
     esp_err_t err;
     size_t item_size;
+
+    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "panel_id", item_size);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "Setting default panel_id");
+        err = this->nvsHandle->set_string("panel_id", Config::get_default_panel_id().c_str());
+    }
+    if (err != ESP_OK) {
+        return err;
+    }
 
     err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_ssid", item_size);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
@@ -80,6 +89,16 @@ void Config::commit() {
         ESP_LOGE(TAG, "Failed to commit NVS handle: %s", esp_err_to_name(err));
         throw std::runtime_error("Failed to commit NVS handle");
     }
+}
+
+std::string Config::get_default_panel_id() {
+    auto buffer = new uint8_t[16];
+    esp_base_mac_addr_get(buffer);
+
+    auto mac = string_format("%02x:%02x:%02x:%02x:%02x:%02x", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+    delete[] buffer;
+
+    return mac;
 }
 
 std::string Config::get_wifi_ssid() const {
@@ -200,4 +219,20 @@ std::string Config::get_panel_id() const {
     delete[] buffer;
 
     return mac;
+}
+
+esp_err_t Config::set_panel_id(const std::string_view &panel_id) {
+    if (!this->initialized) {
+        ESP_LOGE(TAG, "ConfigStore not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t err = this->nvsHandle->set_string("panel_id", panel_id.data());
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set panel ID: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    return ESP_OK;
 }

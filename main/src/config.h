@@ -12,6 +12,8 @@ private:
 
     esp_err_t set_defaults();
     void checkInitialized() const;
+
+    static std::string get_default_panel_id() ;
 public:
     Config();
     esp_err_t init();
@@ -26,6 +28,7 @@ public:
     esp_err_t set_websocket_url(const std::string_view& url);
 
     std::string get_panel_id() const;
+    esp_err_t set_panel_id(const std::string_view& panel_id);
 
     void commit();
 };

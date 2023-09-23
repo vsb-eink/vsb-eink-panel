@@ -1,7 +1,11 @@
 idf_component_register(
 	SRCS
 		src/main.cpp
-		src/services/inkplate_static.cpp
+		src/config.cpp
+		src/eink_mqtt.cpp
+		src/drivers/inkplate_static.cpp
+		src/tasks/panel/panel_task.cpp
+		src/tasks/system/system_task.cpp
 	INCLUDE_DIRS src
-	REQUIRES inkplate json esp_mqtt_cxx esp-idf-cxx
+	REQUIRES inkplate json esp_mqtt_cxx esp-idf-cxx esp_https_ota
 )

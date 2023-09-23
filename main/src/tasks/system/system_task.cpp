@@ -1,4 +1,4 @@
-#include "system_task.hpp"
+#include "system_task.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -6,9 +6,6 @@
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
 #include "esp_crt_bundle.h"
-
-#include "events.hpp"
-#include "utils.hpp"
 
 static constexpr auto *TAG = "system_task";
 
