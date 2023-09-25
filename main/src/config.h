@@ -11,7 +11,7 @@ private:
     std::unique_ptr<nvs::NVSHandle> nvsHandle;
 
     esp_err_t set_defaults();
-    void checkInitialized() const;
+    esp_err_t checkInitialized() const;
 
     static std::string get_default_panel_id() ;
 public:
@@ -30,5 +30,5 @@ public:
     std::string get_panel_id() const;
     esp_err_t set_panel_id(const std::string_view& panel_id);
 
-    void commit();
+    esp_err_t commit();
 };

@@ -22,10 +22,13 @@ public:
         void register_handler(const MQTTTopicHandler& handler) {
             handlers.push_back(handler);
             subscribe(const_cast<MQTTTopicHandler&>(handler).filter.get(), handler.qos);
+            ESP_LOGI("MQTTClient", "Registered handler for topic %s", const_cast<MQTTTopicHandler&>(handler).filter.get().c_str());
         }
 
 private:
         std::vector<MQTTTopicHandler> handlers;
+
+        void on_subscribed(const esp_mqtt_event_handle_t event) override {}
 
         void on_connected(const esp_mqtt_event_handle_t event) override {
             for (const auto& handler : handlers) {

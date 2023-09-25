@@ -3,6 +3,8 @@ idf_component_register(
 		src/main.cpp
 		src/config.cpp
 		src/eink_mqtt.cpp
+		src/utils.cpp
+		src/drivers/inkplate_button.cpp
 		src/drivers/inkplate_static.cpp
 		src/tasks/panel/panel_task.cpp
 		src/tasks/system/system_task.cpp

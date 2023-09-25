@@ -1,7 +1,8 @@
-#include "esp_log.h"
-#include "esp_mac.h"
-
 #include "config.h"
+
+#include <esp_log.h>
+#include <esp_mac.h>
+
 #include "utils.h"
 
 static constexpr auto* TAG = "config-store";
@@ -74,21 +75,23 @@ esp_err_t Config::init() {
     return ESP_OK;
 }
 
-void Config::checkInitialized() const {
-    if (!this->initialized) {
-        throw std::runtime_error("ConfigStore not initialized");
-    }
+esp_err_t Config::checkInitialized() const {
+    return this->initialized ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
-void Config::commit() {
-    this->checkInitialized();
+esp_err_t Config::commit() {
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        return err;
+    }
 
-    esp_err_t err = this->nvsHandle->commit();
+    err = this->nvsHandle->commit();
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to commit NVS handle: %s", esp_err_to_name(err));
-        throw std::runtime_error("Failed to commit NVS handle");
     }
+
+    return err;
 }
 
 std::string Config::get_default_panel_id() {
@@ -102,9 +105,11 @@ std::string Config::get_default_panel_id() {
 }
 
 std::string Config::get_wifi_ssid() const {
-    this->checkInitialized();
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        throw std::runtime_error("ConfigStore not initialized");
+    }
 
-    esp_err_t err;
     size_t ssid_len = 0;
 
     err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_ssid", ssid_len);
@@ -124,9 +129,10 @@ std::string Config::get_wifi_ssid() const {
 }
 
 esp_err_t Config::set_wifi_ssid(const std::string_view& ssid) {
-    this->checkInitialized();
-
-    esp_err_t err;
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        return err;
+    }
 
     err = this->nvsHandle->set_string("wifi_ssid", ssid.data());
 
@@ -139,9 +145,11 @@ esp_err_t Config::set_wifi_ssid(const std::string_view& ssid) {
 }
 
 std::string Config::get_wifi_password() const {
-    this->checkInitialized();
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        throw std::runtime_error("ConfigStore not initialized");
+    }
 
-    esp_err_t err;
     size_t password_len = 0;
 
     err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_password", password_len);
@@ -160,9 +168,10 @@ std::string Config::get_wifi_password() const {
 }
 
 esp_err_t Config::set_wifi_password(const std::string_view& password) {
-    this->checkInitialized();
-
-    esp_err_t err;
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        return err;
+    }
 
     err = this->nvsHandle->set_string("wifi_password", password.data());
 
@@ -175,9 +184,11 @@ esp_err_t Config::set_wifi_password(const std::string_view& password) {
 }
 
 std::string Config::get_websocket_url() const {
-    this->checkInitialized();
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        throw std::runtime_error("ConfigStore not initialized");
+    }
 
-    esp_err_t err;
     size_t url_len = 0;
 
     err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "websocket_url", url_len);
@@ -196,12 +207,12 @@ std::string Config::get_websocket_url() const {
 }
 
 esp_err_t Config::set_websocket_url(const std::string_view& url) {
-    if (!this->initialized) {
-        ESP_LOGE(TAG, "ConfigStore not initialized");
-        return ESP_ERR_INVALID_STATE;
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        return err;
     }
 
-    esp_err_t err = this->nvsHandle->set_string("websocket_url", url.data());
+    err = this->nvsHandle->set_string("websocket_url", url.data());
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set websocket url: %s", esp_err_to_name(err));
@@ -222,12 +233,12 @@ std::string Config::get_panel_id() const {
 }
 
 esp_err_t Config::set_panel_id(const std::string_view &panel_id) {
-    if (!this->initialized) {
-        ESP_LOGE(TAG, "ConfigStore not initialized");
-        return ESP_ERR_INVALID_STATE;
+    auto err = this->checkInitialized();
+    if (err != ESP_OK) {
+        return err;
     }
 
-    esp_err_t err = this->nvsHandle->set_string("panel_id", panel_id.data());
+    err = this->nvsHandle->set_string("panel_id", panel_id.data());
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set panel ID: %s", esp_err_to_name(err));
