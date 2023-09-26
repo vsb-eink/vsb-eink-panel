@@ -77,6 +77,36 @@ channels:
       message:
         $ref: "#/components/messages/PanelFirmwareUpdate"
 
+  vsb-eink/{panelId}/palette:
+    description: Topic of a panel palette
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    publish:
+      summary: Publishes the current palette for a panel
+      message:
+        $ref: "#/components/messages/PanelPaletteSelect"
+
+  vsb-eink/{panelId}/palette/get:
+    description: Topic for requesting the current palette for a panel
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: getPanelPalette
+      summary: Requests the current palette for a panel
+
+  vsb-eink/{panelId}/palette/set:
+    description: Topic for selecting a palette for a panel
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: selectPanelPalette
+      summary: Selects a palette for a panel
+      message:
+        $ref: "#/components/messages/PanelPaletteSelect"
+
 components:
   parameters:
     panelId:
@@ -124,6 +154,14 @@ components:
       contentType: text/plain
       payload:
         $ref: "#/components/schemas/PanelFirmwareUpdatePayload"
+
+    PanelPaletteSelect:
+      name: PanelPaletteSelect
+      title: Panel Palette Select
+      summary: Selects a palette for a panel
+      contentType: text/plain
+      payload:
+        $ref: "#/components/schemas/PanelPaletteSelectPayload"
   
   schemas:
     PanelConfigStatusPayload:
@@ -207,3 +245,8 @@ components:
       description: URL of a firmware file to download
       type: string
       format: uri
+
+    PanelPaletteSelectPayload:
+      description: id of a palette to select
+      type: integer
+      minimum: 0
