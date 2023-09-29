@@ -5,12 +5,15 @@
 
 class InkplateButton {
 public:
+    const int id;
+
     enum class ButtonState {
         RELEASED = 0,
         PRESSED = 1,
     };
 
-    InkplateButton(const std::function<void()>& on_press, const std::function<void()>& on_release) :
+    InkplateButton(const int id, const std::function<void()>& on_press, const std::function<void()>& on_release) :
+            id{id},
             state{ButtonState::RELEASED},
             last_change{std::chrono::system_clock::now()},
             on_press{on_press},

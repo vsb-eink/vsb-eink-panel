@@ -5,6 +5,7 @@
 #include <esp_log.h>
 
 #include "drivers/inkplate_button.h"
+#include "drivers/inkplate_touchpad.h"
 #include "utils.h"
 
 void display_1bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
@@ -59,44 +60,18 @@ void panel_task(const TaskContext &ctx) {
 
     auto panel_id = ctx.config.get_panel_id();
 
-    auto touchpad_btn_1 = InkplateButton(
-        [&]() {
-            ESP_LOGI("panel_task", "Touchpad 1 pressed");
-            auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/1/pressed", panel_id.c_str());
+    auto touchpad = InkplateTouchpad(
+        ctx.inkplate,
+        [&](const int btn_id) {
+            ESP_LOGI("panel_task", "Touchpad %d pressed", btn_id);
+            auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/%d/pressed", panel_id.c_str(), btn_id);
             ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-            },
-        [&]() {
-            ESP_LOGI("panel_task", "Touchpad 1 released");
-            auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/1/pressed", panel_id.c_str());
-            ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-        }
-    );
-
-    auto touchpad_btn_2 = InkplateButton(
-            [&]() {
-                ESP_LOGI("panel_task", "Touchpad 2 pressed");
-                auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/2/pressed", panel_id.c_str());
-                ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-            },
-            [&]() {
-                ESP_LOGI("panel_task", "Touchpad 2 released");
-                auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/2/pressed", panel_id.c_str());
-                ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-            }
-    );
-
-    auto touchpad_btn_3 = InkplateButton(
-            [&]() {
-                ESP_LOGI("panel_task", "Touchpad 3 pressed");
-                auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/3/pressed", panel_id.c_str());
-                ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-            },
-            [&]() {
-                ESP_LOGI("panel_task", "Touchpad 3 released");
-                auto panel_button_pressed_topic = string_format("vsb-eink/%s/button/3/pressed", panel_id.c_str());
-                ctx.mqtt.publish<std::string>(panel_button_pressed_topic, {});
-            }
-    );
+        },
+        [&](const int btn_id) {
+            ESP_LOGI("panel_task", "Touchpad %d released", btn_id);
+            auto panel_button_released_topic = string_format("vsb-eink/%s/button/%d/released", panel_id.c_str(), btn_id);
+            ctx.mqtt.publish<std::string>(panel_button_released_topic, {});
+        });
 
     auto update_panel_display_raw_1bpp_topic = string_format("vsb-eink/%s/display/raw_1bpp/set", panel_id.c_str());
     ctx.mqtt.register_handler({
@@ -115,9 +90,7 @@ void panel_task(const TaskContext &ctx) {
     });
 
     for (;;) {
-        touchpad_btn_1.update(ctx.inkplate.readTouchpad(PAD1));
-        touchpad_btn_2.update(ctx.inkplate.readTouchpad(PAD2));
-        touchpad_btn_3.update(ctx.inkplate.readTouchpad(PAD3));
+        touchpad.update();
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

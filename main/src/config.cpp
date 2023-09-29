@@ -1,98 +1,11 @@
 #include "config.h"
 
-#include <esp_log.h>
+#include <nvs_handle.hpp>
 #include <esp_mac.h>
 
 #include "utils.h"
 
-static constexpr auto* TAG = "config-store";
-
-Config::Config():
-    initialized(false),
-    nvsHandle(nullptr) {}
-
-esp_err_t Config::set_defaults() {
-    esp_err_t err;
-    size_t item_size;
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "panel_id", item_size);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting default panel_id");
-        err = this->nvsHandle->set_string("panel_id", Config::get_default_panel_id().c_str());
-    }
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_ssid", item_size);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting default wifi_ssid");
-        err = this->nvsHandle->set_string("wifi_ssid", CONFIG_ESP_WIFI_SSID_FALLBACK);
-    }
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_password", item_size);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting default wifi_password");
-        err = this->nvsHandle->set_string("wifi_password", CONFIG_ESP_WIFI_PASSWORD_FALLBACK);
-    }
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "websocket_url", item_size);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting default websocket_url");
-        err = this->nvsHandle->set_string("websocket_url", CONFIG_VSB_EINK_WEBSOCKET_URL_FALLBACK);
-    }
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    return this->nvsHandle->commit();
-}
-
-esp_err_t Config::init() {
-    esp_err_t err;
-    this->nvsHandle = nvs::open_nvs_handle("vsb_eink", NVS_READWRITE, &err);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open NVS handle: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    err = this->set_defaults();
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set defaults: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    this->initialized = true;
-
-    return ESP_OK;
-}
-
-esp_err_t Config::checkInitialized() const {
-    return this->initialized ? ESP_OK : ESP_ERR_INVALID_STATE;
-}
-
-esp_err_t Config::commit() {
-    auto err = this->checkInitialized();
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->commit();
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to commit NVS handle: %s", esp_err_to_name(err));
-    }
-
-    return err;
-}
+Config::Config() {};
 
 std::string Config::get_default_panel_id() {
     auto buffer = new uint8_t[16];
@@ -104,146 +17,97 @@ std::string Config::get_default_panel_id() {
     return mac;
 }
 
-std::string Config::get_wifi_ssid() const {
-    auto err = this->checkInitialized();
+std::optional<std::string> Config::get_string(const std::shared_ptr<nvs::NVSHandle> &nvs_handle, const char * item_key) {
+    esp_err_t err;
+    size_t string_len;
+
+    err = nvs_handle->get_item_size(nvs::ItemType::SZ, item_key, string_len);
     if (err != ESP_OK) {
-        throw std::runtime_error("ConfigStore not initialized");
+        return {};
     }
 
-    size_t ssid_len = 0;
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_ssid", ssid_len);
+    std::string result;
+    err = nvs_handle->get_string(item_key, result.data(), string_len);
     if (err != ESP_OK) {
-        throw std::runtime_error(string_format("Failed to get item size: %s", esp_err_to_name(err)));
+        return {};
     }
 
-    auto ssid_buffer = std::make_unique<char[]>(ssid_len);
-    err = this->nvsHandle->get_string("wifi_ssid", ssid_buffer.get(), ssid_len);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get wifi ssid: %s", esp_err_to_name(err));
-        throw std::runtime_error("Failed to get wifi ssid");
-    }
-
-    return { ssid_buffer.get() };
+    return result;
 }
 
-esp_err_t Config::set_wifi_ssid(const std::string_view& ssid) {
-    auto err = this->checkInitialized();
+esp_err_t Config::load_from_nvs() {
+    esp_err_t err;
+    std::shared_ptr nvs_handle = nvs::open_nvs_handle("vsb_eink", NVS_READONLY, &err);
+
     if (err != ESP_OK) {
         return err;
     }
 
-    err = this->nvsHandle->set_string("wifi_ssid", ssid.data());
+    auto wifi_ssid_fallback = get_string(nvs_handle, "wifi_ssid_fallback");
+    network_fallback.wifi_ssid = wifi_ssid_fallback.value_or("TUO-IOT");
 
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set wifi ssid: %s", esp_err_to_name(err));
-        return err;
-    }
+    auto wifi_password_fallback = get_string(nvs_handle, "wifi_password_fallback");
+    network_fallback.wifi_password = wifi_password_fallback.value_or("");
 
-    return ESP_OK;
+    auto wifi_ssid = get_string(nvs_handle, "wifi_ssid");
+    network.wifi_ssid = wifi_ssid.value_or(network_fallback.wifi_ssid);
+
+    auto wifi_password = get_string(nvs_handle, "wifi_password");
+    network.wifi_password = wifi_password.value_or(network_fallback.wifi_password);
+
+    auto panel_id_fallback = get_string(nvs_handle, "panel_id_fallback");
+    panel_fallback.panel_id = panel_id_fallback.value_or(get_default_panel_id());
+
+    auto panel_id = get_string(nvs_handle, "panel_id");
+    panel.panel_id = panel_id.value_or(panel.panel_id);
+
+    auto mqtt_broker_url_fallback = get_string(nvs_handle, "mqtt_broker_url_fallback");
+    mqtt_fallback.broker_url = mqtt_broker_url_fallback.value_or("mqtt://vsb-eink.lksv.cz:1883");
+
+    auto mqtt_broker_url = get_string(nvs_handle, "mqtt_broker_url");
+    mqtt.broker_url = mqtt_broker_url.value_or(mqtt_fallback.broker_url);
 }
 
-std::string Config::get_wifi_password() const {
-    auto err = this->checkInitialized();
-    if (err != ESP_OK) {
-        throw std::runtime_error("ConfigStore not initialized");
-    }
-
-    size_t password_len = 0;
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "wifi_password", password_len);
-    if (err != ESP_OK) {
-        throw std::runtime_error(string_format("Failed to get item size: %s", esp_err_to_name(err)));
-    }
-
-    auto password_buffer = std::make_unique<char[]>(password_len);
-    err = this->nvsHandle->get_string("wifi_password", password_buffer.get(), password_len);
+esp_err_t Config::commit() {
+    esp_err_t err;
+    std::shared_ptr nvs_handle = nvs::open_nvs_handle("vsb_eink", NVS_READONLY, &err);
 
     if (err != ESP_OK) {
-        throw std::runtime_error(string_format("Failed to get wifi password: %s", esp_err_to_name(err)));
+        return err;
     }
 
-    return { password_buffer.get() };
+    nvs_handle->set_string("wifi_ssid", network.wifi_ssid.c_str());
+    nvs_handle->set_string("wifi_password", network.wifi_password.c_str());
+    nvs_handle->set_string("wifi_ssid_fallback", network_fallback.wifi_ssid.c_str());
+    nvs_handle->set_string("wifi_password_fallback", network_fallback.wifi_password.c_str());
+    nvs_handle->set_string("panel_id", panel.panel_id.c_str());
+    nvs_handle->set_string("panel_id_fallback", panel_fallback.panel_id.c_str());
+    nvs_handle->set_string("mqtt_broker_url", mqtt.broker_url.c_str());
+    nvs_handle->set_string("mqtt_broker_url_fallback", mqtt_fallback.broker_url.c_str());
+
+    return nvs_handle->commit();
 }
 
-esp_err_t Config::set_wifi_password(const std::string_view& password) {
-    auto err = this->checkInitialized();
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->set_string("wifi_password", password.data());
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set wifi password: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    return ESP_OK;
+void Config::set_network_config(const NetworkConfig &config) {
+    network_fallback = network;
+    network = config;
 }
 
-std::string Config::get_websocket_url() const {
-    auto err = this->checkInitialized();
-    if (err != ESP_OK) {
-        throw std::runtime_error("ConfigStore not initialized");
-    }
-
-    size_t url_len = 0;
-
-    err = this->nvsHandle->get_item_size(nvs::ItemType::SZ, "websocket_url", url_len);
-    if (err != ESP_OK) {
-        throw std::runtime_error(string_format("Failed to get item size: %s", esp_err_to_name(err)));
-    }
-
-    auto url_buffer = std::make_unique<char[]>(url_len);
-    err = this->nvsHandle->get_string("websocket_url", url_buffer.get(), url_len);
-
-    if (err != ESP_OK) {
-        throw std::runtime_error(string_format("Failed to get websocket url: %s", esp_err_to_name(err)));
-    }
-
-    return { url_buffer.get() };
+void Config::set_panel_config(const PanelConfig &config) {
+    panel_fallback = panel;
+    panel = config;
 }
 
-esp_err_t Config::set_websocket_url(const std::string_view& url) {
-    auto err = this->checkInitialized();
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = this->nvsHandle->set_string("websocket_url", url.data());
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set websocket url: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    return ESP_OK;
+void Config::set_mqtt_config(const MqttConfig &config) {
+    mqtt_fallback = mqtt;
+    mqtt = config;
 }
 
-std::string Config::get_panel_id() const {
-    auto buffer = new uint8_t[16];
-    esp_base_mac_addr_get(buffer);
+esp_err_t Config::commit_network_config() {
+    esp_err_t err;
+    std::shared_ptr nvs_handle = nvs::open_nvs_handle("vsb_eink", NVS_READWRITE, &err);
 
-    auto mac = string_format("%02x:%02x:%02x:%02x:%02x:%02x", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-    delete[] buffer;
-
-    return mac;
-}
-
-esp_err_t Config::set_panel_id(const std::string_view &panel_id) {
-    auto err = this->checkInitialized();
     if (err != ESP_OK) {
         return err;
     }
-
-    err = this->nvsHandle->set_string("panel_id", panel_id.data());
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set panel ID: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    return ESP_OK;
 }

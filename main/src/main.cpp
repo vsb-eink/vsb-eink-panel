@@ -37,8 +37,7 @@ extern "C" [[noreturn]] void app_main() {
     MQTTClient mqtt_client{
             mqtt_broker,
             mqtt_client_credentials,
-            mqtt_client_config,
-            {}
+            mqtt_client_config
     };
 
     TaskContext ctx{
