@@ -2,6 +2,9 @@ key,type,encoding,value
 eeprom,namespace,,
 eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAAAAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
 vsb_eink,namespace,,
-wifi_ssid,data,string,"TUONET-IOT"
-wifi_password,data,string,"tuo12345"
-websocket_url,data,string,"wss://eink.lksv.cz/gateway/ws"
+wifi_ssid_a,data,string,"TUONET-IOT"
+wifi_pass_a,data,string,""
+wifi_ssid_b,data,string,"Home-Wifi"
+wifi_pass_b,data,string,""
+broker_url_a,data,string,"mqtt://192.168.1.164:1883"
+broker_url_b,data,string,"mqtt://192.168.1.164:1883"

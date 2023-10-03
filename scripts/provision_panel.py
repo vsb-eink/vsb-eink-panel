@@ -53,7 +53,7 @@ def main():
     nvs_partition_file = tempfile.NamedTemporaryFile(suffix='.bin') if args.flash else Path(args.output)
 
     try:
-        subprocess.check_call([PYTHON, NVS_PARTITION_GEN_PY, 'generate', args.nvs_config, nvs_partition_file.name, "0x5000"])
+        subprocess.check_call([PYTHON, NVS_PARTITION_GEN_PY, 'generate', args.nvs_config, nvs_partition_file.name, "0x4000"])
         print('successfully generated nvs partition at {}'.format(nvs_partition_file.name))
     except subprocess.CalledProcessError as e:
         print('failed to generate nvs partition', file=sys.stderr)

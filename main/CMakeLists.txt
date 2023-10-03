@@ -7,6 +7,7 @@ idf_component_register(
 		src/drivers/inkplate_button.cpp
 		src/drivers/inkplate_static.cpp
 		src/drivers/inkplate_touchpad.cpp
+		src/drivers/inkplate_waveform.cpp
 		src/tasks/panel/panel_task.cpp
 		src/tasks/system/system_task.cpp
 	INCLUDE_DIRS src

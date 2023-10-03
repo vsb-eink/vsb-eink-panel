@@ -7,13 +7,17 @@
 
 #include "inkplate_button.h"
 
+struct InkplateTouchpadEvent {
+    const int pad_id;
+    const InkplateButton::ButtonState event_type;
+};
+
 class InkplateTouchpad {
 public:
-    InkplateTouchpad(Inkplate &inkplate, const std::function<void(const int pad_id)> &on_press, const std::function<void(const int pad_id)> &on_release);
-    void update();
+    InkplateTouchpad(Inkplate &inkplate, const std::function<void(const InkplateTouchpadEvent event)> &on_event);
+    std::optional<InkplateTouchpadEvent> update();
 private:
     Inkplate &inkplate;
     std::vector<InkplateButton> buttons;
-    std::function<void(const int pad_id)> on_press;
-    std::function<void(const int pad_id)> on_release;
+    std::function<void(const InkplateTouchpadEvent event)> on_event;
 };

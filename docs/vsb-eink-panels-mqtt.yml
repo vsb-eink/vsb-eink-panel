@@ -22,7 +22,7 @@ channels:
     publish:
       summary: Publishes configuration of a panel
       message:
-        $ref: "#/components/messages/PanelConfigStatus"
+        $ref: "#/components/messages/PanelConfigStatusMessage"
   
   vsb-eink/{panelId}/config/set:
     description: Topic for updating a panel configuration
@@ -33,16 +33,7 @@ channels:
       operationId: updatePanelConfig
       summary: Updates configuration of a panel
       message:
-        $ref: "#/components/messages/PanelConfigUpdate"
-  
-  vsb-eink/{panelId}/config/get:
-    description: Topic for requesting a panel configuration status
-    parameters:
-      panelId:
-        $ref: "#/components/parameters/panelId"
-    subscribe:
-      operationId: getPanelConfig
-      summary: Requests configuration of a panel
+        $ref: "#/components/messages/PanelConfigUpdateMessage"
   
   vsb-eink/{panelId}/display/raw_1bpp/set:
     description: Topic for updating a panel display with 1-bit images
@@ -53,7 +44,7 @@ channels:
       operationId: updatePanelDisplayRaw1Bpp
       summary: Updates display of a panel
       message:
-        $ref: "#/components/messages/PanelDisplayRaw1Bpp"
+        $ref: "#/components/messages/PanelDisplayRaw1BppMessage"
   
   vsb-eink/{panelId}/display/raw_4bpp/set:
     description: Topic for updating a panel display with 3-bit images
@@ -64,7 +55,26 @@ channels:
       operationId: updatePanelDisplayRaw4Bpp
       summary: Updates display of a panel
       message:
-        $ref: "#/components/messages/PanelDisplayRaw4Bpp"
+        $ref: "#/components/messages/PanelDisplayRaw4BppMessage"
+
+  vsb-eink/{panelId}/system:
+    description: Topic of a panel system status
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    publish:
+      summary: Publishes the current system status for a panel
+      message:
+        $ref: "#/components/messages/PanelSystemStatusMessage"
+
+  vsb-eink/{panelId}/reboot/set:
+    description: Topic for rebooting a panel
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: rebootPanel
+      summary: Reboots a panel
   
   vsb-eink/{panelId}/firmware/update/set:
     description: Topic for updating a panel firmware
@@ -75,37 +85,31 @@ channels:
       operationId: updatePanelFirmware
       summary: Updates firmware of a panel
       message:
-        $ref: "#/components/messages/PanelFirmwareUpdate"
+        $ref: "#/components/messages/PanelFirmwareUpdateMessage"
 
-  vsb-eink/{panelId}/palette:
-    description: Topic of a panel palette
+  vsb-eink/{panelId}/touchpad/{touchpadId}:
+    description: Topic for touchpad events
     parameters:
       panelId:
         $ref: "#/components/parameters/panelId"
+      touchpadId:
+        $ref: "#/components/parameters/touchpadId"
     publish:
-      summary: Publishes the current palette for a panel
+      summary: Publishes event of a touchpad button
       message:
-        $ref: "#/components/messages/PanelPaletteSelect"
+        $ref: "#/components/messages/PanelTouchpadActionMessage"
 
-  vsb-eink/{panelId}/palette/get:
-    description: Topic for requesting the current palette for a panel
+  vsb-eink/{panelId}/touchpad/{touchpadId}/{touchpadAction}:
+    description: Topic for specific touchpad events
     parameters:
       panelId:
         $ref: "#/components/parameters/panelId"
-    subscribe:
-      operationId: getPanelPalette
-      summary: Requests the current palette for a panel
-
-  vsb-eink/{panelId}/palette/set:
-    description: Topic for selecting a palette for a panel
-    parameters:
-      panelId:
-        $ref: "#/components/parameters/panelId"
-    subscribe:
-      operationId: selectPanelPalette
-      summary: Selects a palette for a panel
-      message:
-        $ref: "#/components/messages/PanelPaletteSelect"
+      touchpadId:
+        $ref: "#/components/parameters/touchpadId"
+      touchpadAction:
+        $ref: "#/components/parameters/touchpadAction"
+    publish:
+      summary: Publishes specific event of a touchpad button
 
 components:
   parameters:
@@ -113,9 +117,19 @@ components:
       description: ID of a panel
       schema:
         type: string
+    touchpadId:
+      description: ID of a touchpad button
+      schema:
+        type: integer
+        enum: [1, 2, 3]
+    touchpadAction:
+      description: Action of a touchpad button
+      schema:
+        type: string
+        enum: [ "pressed", "released" ]
   
   messages:
-    PanelConfigStatus:
+    PanelConfigStatusMessage:
       name: PanelConfigStatus
       title: Panel Config Status
       summary: Status of a panel configuration
@@ -123,7 +137,7 @@ components:
       payload:
         $ref: "#/components/schemas/PanelConfigStatusPayload"
     
-    PanelConfigUpdate:
+    PanelConfigUpdateMessage:
       name: PanelConfigUpdate
       title: Panel Config Update
       summary: Update of a panel configuration
@@ -131,7 +145,7 @@ components:
       payload:
         $ref: "#/components/schemas/PanelConfigUpdatePayload"
     
-    PanelDisplayRaw1Bpp:
+    PanelDisplayRaw1BppMessage:
       name: PanelDisplayRaw1Bpp
       title: Panel Display 1-Bit
       summary: 1-bit image for a panel display
@@ -139,7 +153,7 @@ components:
       payload:
         $ref: "#/components/schemas/PanelDisplayRaw1BppPayload"
     
-    PanelDisplayRaw4Bpp:
+    PanelDisplayRaw4BppMessage:
       name: PanelDisplayRaw4Bpp
       title: Panel Display 3-bit
       summary: 3-bit image for a panel display
@@ -147,7 +161,7 @@ components:
       payload:
         $ref: "#/components/schemas/PanelDisplayRaw4BppPayload"
     
-    PanelFirmwareUpdate:
+    PanelFirmwareUpdateMessage:
       name: PanelFirmwareUpdate
       title: Panel Firmware Update
       summary: Update of a panel firmware
@@ -155,81 +169,132 @@ components:
       payload:
         $ref: "#/components/schemas/PanelFirmwareUpdatePayload"
 
-    PanelPaletteSelect:
-      name: PanelPaletteSelect
-      title: Panel Palette Select
-      summary: Selects a palette for a panel
-      contentType: text/plain
+    PanelSystemStatusMessage:
+      name: PanelSystemStatus
+      title: Panel System Status
+      summary: Status of a panel system
+      contentType: application/json
       payload:
-        $ref: "#/components/schemas/PanelPaletteSelectPayload"
-  
+        $ref: "#/components/schemas/PanelSystemStatusPayload"
+
+    PanelTouchpadActionMessage:
+      name: PanelTouchpadAction
+      title: Panel Touchpad Action
+      summary: Action of a panel touchpad
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PanelTouchpadAction"
+
   schemas:
-    PanelConfigStatusPayload:
+    PanelWifiStatus:
       type: object
+      description: WiFi connection status
+      properties:
+        ssid:
+          type: string
+          description: SSID of the currently used WiFi network
+        rssi:
+          type: integer
+          minimum: -120
+          maximum: 0
+          description: Signal strength of the currently used WiFi network
+
+    PanelWifiConfig:
+      type: object
+      description: WiFi configuration
+      properties:
+        ssid:
+          type: string
+          description: SSID of a WiFi network to use
+        password:
+          type: string
+          description: Password of a WiFi network to use
+
+    PanelSystemStatusPayload:
+      type: object
+      description: System status
+      properties:
+        network:
+          $ref: "#/components/schemas/PanelWifiStatus"
+          required:
+            - rssi
+            - ssid
+        uptime:
+          type: integer
+          minimum: 0
+          description: Uptime of a system in seconds
+        freeHeap:
+          type: integer
+          minimum: 0
+          description: Free heap memory in bytes
+        firmwareVersion:
+          type: string
+          description: Version of a firmware
+      required:
+        - network
+        - uptime
+        - freeHeap
+        - firmwareVersion
+
+    PanelMqttConfig:
+      type: object
+      description: MQTT configuration
+      properties:
+        brokerUrl:
+          type: string
+          description: Host of a MQTT brokers
+
+    PanelCoreConfig:
+      type: object
+      description: Core configuration
       properties:
         panelId:
           type: string
           description: ID of a panel
-        firmware:
-          type: object
-          description: Firmware configuration
-          properties:
-            version:
-              type: string
-              description: Version of a firmware
+        waveform:
+          type: integer
+          enum: [ 0, 1, 2, 3, 4, 5 ]
+          description: ID of a waveform
+
+    PanelTouchpadAction:
+      type: string
+      enum: [ "pressed", "released" ]
+
+    PanelConfigStatusPayload:
+      type: object
+      properties:
+        panel:
+          $ref: "#/components/schemas/PanelCoreConfig"
           required:
-            - version
+            - panelId
+            - waveform
         wifi:
-          type: object
-          description: WiFi configuration
-          properties:
-            rssi:
-              type: integer
-              description: Signal strength of the currently used WiFi network
-            ssid:
-              type: string
-              description: SSID of the currently used WiFi network
+          $ref: "#/components/schemas/PanelWifiStatus"
           required:
             - rssi
             - ssid
         mqtt:
-          type: object
-          description: MQTT configuration
-          properties:
-            uri:
-              type: string
-              description: Host of a MQTT brokers
+          $ref: "#/components/schemas/PanelMqttConfig"
           required:
-            - uri
+            - brokerUrl
       required:
-        - panelId
+        - panel
         - wifi
         - mqtt
         - firmware
-      
+
     PanelConfigUpdatePayload:
       type: object
       properties:
-        panelId:
-          type: string
-          description: ID of a panel
+        panel:
+          $ref: "#/components/schemas/PanelCoreConfig"
         wifi:
-          type: object
-          description: WiFi configuration
-          properties:
-            ssid:
-              type: string
-              description: SSID of a WiFi network to use
-            password:
-              type: string
-              description: Password of a WiFi network to use
+          $ref: "#/components/schemas/PanelWifiConfig"
+          required:
+            - ssid
+            - password
         mqtt:
-          type: object
-          description: MQTT configuration
-          properties:
-            uri:
-              type: string
-              description: Host of a MQTT brokers
+          $ref: "#/components/schemas/PanelMqttConfig"
     
     PanelDisplayRaw1BppPayload:
       description: 1bit monochrome image encoded as 1 bit per pixel image (little-endian)
@@ -245,8 +310,3 @@ components:
       description: URL of a firmware file to download
       type: string
       format: uri
-
-    PanelPaletteSelectPayload:
-      description: id of a palette to select
-      type: integer
-      minimum: 0

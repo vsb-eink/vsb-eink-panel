@@ -8,17 +8,18 @@
 #include <esp_http_client.h>
 #include <esp_https_ota.h>
 #include <esp_crt_bundle.h>
+#include <cJSON.h>
 
 #include "utils.h"
 
 static constexpr auto *TAG = "system_task";
 
-static void reboot_handler(const esp_mqtt_event_handle_t event) {
+void reboot_handler(const esp_mqtt_event_handle_t event) {
     ESP_LOGI(TAG, "Rebooting...");
     esp_restart();
 }
 
-static void perform_ota_update_handler(const esp_mqtt_event_handle_t event) {
+void perform_ota_update_handler(const esp_mqtt_event_handle_t event) {
     auto data = event->data;
     auto data_len = event->data_len;
     auto total_data_len = event->total_data_len;
@@ -46,92 +47,121 @@ static void perform_ota_update_handler(const esp_mqtt_event_handle_t event) {
     }
 }
 
-static void config_set_ssid_handler(const esp_mqtt_event_handle_t event, Config& config) {
-    auto data = event->data;
-    auto data_len = event->data_len;
-    auto total_data_len = event->total_data_len;
-    esp_err_t err;
+void publish_system_status(const TaskContext &ctx) {
+    using idf::mqtt::Retain;
 
-    if (data_len != total_data_len) {
-        ESP_LOGE(TAG, "Config setter got a chunked response, which is not yet supported");
-        return;
-    }
+    wifi_ap_record_t ap_info;
+    esp_wifi_sta_get_ap_info(&ap_info);
+    auto panel_system_status_topic = string_format("vsb-eink/%s/system", ctx.config.panel.panel_id.c_str());
 
-    ESP_LOGI(TAG, "Setting SSID to %s", data);
-    err = config.set_wifi_ssid(data);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set ssid: %s", esp_err_to_name(err));
-    } else {
-        ESP_LOGI(TAG, "SSID set successfully");
-    }
+    auto system_status_json = cJSON_CreateObject();
 
-    try {
-        ESP_LOGI(TAG, "Committing config");
-        config.commit();
-    } catch (const std::exception &e) {
-        ESP_LOGE(TAG, "Failed to commit config: %s", e.what());
-    }
+    auto system_status_wifi_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(system_status_wifi_json, "ssid", reinterpret_cast<const char *>(ap_info.ssid));
+    cJSON_AddNumberToObject(system_status_wifi_json, "rssi", ap_info.rssi);
+    cJSON_AddItemToObject(system_status_json, "network", system_status_wifi_json);
+
+    cJSON_AddNumberToObject(system_status_json, "uptime", esp_timer_get_time() / 1000 / 1000);
+    cJSON_AddNumberToObject(system_status_json, "freeHeap", esp_get_free_heap_size());
+    cJSON_AddStringToObject(system_status_json, "firmwareVersion", esp_app_get_description()->version);
+
+    auto system_status_json_str = cJSON_PrintUnformatted(system_status_json);
+    ctx.mqtt.publish<std::string>(panel_system_status_topic, { .data=system_status_json_str, .retain = Retain::Retained });
+
+    cJSON_Delete(system_status_json);
+    free(system_status_json_str);
 }
 
-static void config_set_password_handler(const esp_mqtt_event_handle_t event, Config& config) {
+void update_config_handler(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
     auto data = event->data;
     auto data_len = event->data_len;
     auto total_data_len = event->total_data_len;
 
     if (data_len != total_data_len) {
-        ESP_LOGE(TAG, "Config setter got a chunked response, which is not yet supported");
+        ESP_LOGE(TAG, "Config update got a chunked response, which is not yet supported");
         return;
     }
 
-    try {
-        ESP_LOGI(TAG, "Setting password to %s", data);
-        config.set_wifi_password(data);
-    } catch (const std::exception &e) {
-        ESP_LOGE(TAG, "Failed to set password: %s", e.what());
-    }
-
-    try {
-        ESP_LOGI(TAG, "Committing config");
-        config.commit();
-    } catch (const std::exception &e) {
-        ESP_LOGE(TAG, "Failed to commit config: %s", e.what());
-    }
-}
-
-static void config_set_websocket_url_handler(const esp_mqtt_event_handle_t event, Config& config) {
-    auto data = event->data;
-    auto data_len = event->data_len;
-    auto total_data_len = event->total_data_len;
-
-    if (data_len != total_data_len) {
-        ESP_LOGE(TAG, "Config setter got a chunked response, which is not yet supported");
+    auto config_json = cJSON_Parse(data);
+    if (!cJSON_IsObject(config_json)) {
+        ESP_LOGE(TAG, "Failed to parse config JSON");
         return;
     }
 
-    try {
-        ESP_LOGI(TAG, "Setting websocket url to %s", data);
-        config.set_websocket_url(data);
-    } catch (const std::exception &e) {
-        ESP_LOGE(TAG, "Failed to set websocket url: %s", e.what());
+    auto panel_config_json = cJSON_GetObjectItem(config_json, "panel");
+    auto wifi_config_json = cJSON_GetObjectItem(config_json, "wifi");
+    auto mqtt_config_json = cJSON_GetObjectItem(config_json, "mqtt");
+
+    // update panel config
+    bool panel_config_changed = false;
+    if (cJSON_IsObject(panel_config_json)) {
+        auto panel_id_json = cJSON_GetObjectItem(panel_config_json, "panel_id");
+        auto waveform_json = cJSON_GetObjectItem(panel_config_json, "waveform");
+
+        if (cJSON_IsString(panel_id_json)) {
+            ctx.config.set_panel_config({
+                .panel_id = panel_id_json->valuestring,
+                .waveform = ctx.config.panel.waveform
+            });
+            panel_config_changed = true;
+        }
+
+        if (cJSON_IsNumber(waveform_json)) {
+            ctx.config.set_panel_config({
+                .panel_id = ctx.config.panel.panel_id,
+                .waveform = static_cast<uint8_t>(waveform_json->valueint)
+            });
+            panel_config_changed = true;
+        }
     }
 
-    try {
-        ESP_LOGI(TAG, "Committing config");
-        config.commit();
-    } catch (const std::exception &e) {
-        ESP_LOGE(TAG, "Failed to commit config: %s", e.what());
+    // update wifi config
+    bool wifi_config_changed = false;
+    if (cJSON_IsObject(wifi_config_json)) {
+        auto wifi_ssid_json = cJSON_GetObjectItem(wifi_config_json, "ssid");
+        auto wifi_password_json = cJSON_GetObjectItem(wifi_config_json, "password");
+
+        if (!(cJSON_IsString(wifi_ssid_json) && cJSON_IsString(wifi_password_json))) {
+            ESP_LOGE(TAG, "Invalid wifi config JSON, both ssid and password must be valid strings");
+            return;
+        }
+
+        ctx.config.set_wifi_config({
+            .ssid = wifi_ssid_json->valuestring,
+            .password = wifi_password_json->valuestring
+        });
+        wifi_config_changed = true;
     }
+
+    // update mqtt config
+    bool mqtt_config_changed = false;
+    if (cJSON_IsObject(mqtt_config_json)) {
+        auto mqtt_broker_url_json = cJSON_GetObjectItem(mqtt_config_json, "broker_url");
+
+        if (cJSON_IsString(mqtt_broker_url_json)) {
+            ctx.config.set_mqtt_config({
+                .broker_url = mqtt_broker_url_json->valuestring
+            });
+            mqtt_config_changed = true;
+        }
+    }
+
+    // commit changes
+    if (panel_config_changed) ESP_ERROR_CHECK_WITHOUT_ABORT(ctx.config.commit_panel_config());
+    if (wifi_config_changed) ESP_ERROR_CHECK_WITHOUT_ABORT(ctx.config.commit_wifi_config());
+    if (mqtt_config_changed) ESP_ERROR_CHECK_WITHOUT_ABORT(ctx.config.commit_mqtt_config());
 }
 
 [[noreturn]]
 void system_task(const TaskContext &ctx) {
     using idf::mqtt::Filter;
-    auto panel_id = ctx.config.get_panel_id();
+    using idf::mqtt::Retain;
+    auto panel_id = ctx.config.panel.panel_id;
 
     auto update_panel_config_topic = string_format("vsb-eink/%s/config/set", panel_id.c_str());
     ctx.mqtt.register_handler({
         .filter = Filter(update_panel_config_topic),
-        .callback = [](const esp_mqtt_event_handle_t event) {}
+        .callback = [&](const esp_mqtt_event_handle_t event) { update_config_handler(ctx, event); }
     });
 
     auto reboot_panel_topic = string_format("vsb-eink/%s/reboot/set", panel_id.c_str());
@@ -146,11 +176,11 @@ void system_task(const TaskContext &ctx) {
         .callback = perform_ota_update_handler
     });
 
+    DebounceTimer system_status_debounce_timer(std::chrono::milliseconds(3000));
     for (;;) {
-        wifi_ap_record_t ap_info;
-        esp_wifi_sta_get_ap_info(&ap_info);
-        auto panel_wifi_rssi_topic = string_format("vsb-eink/%s/wifi/rssi", panel_id.c_str());
-        ctx.mqtt.publish<std::string>(panel_wifi_rssi_topic, {.data= std::to_string(ap_info.rssi) });
+        if (system_status_debounce_timer.tick()) {
+            publish_system_status(ctx);
+        }
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
