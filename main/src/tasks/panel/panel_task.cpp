@@ -17,6 +17,13 @@ void display_1bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
         ctx.inkplate.display();
     }
 
+    // check expected payload size
+    auto expected_size = ctx.inkplate.einkWidth() * ctx.inkplate.einkHeight() / 8;
+    if (event->total_data_len != expected_size) {
+        ESP_LOGE("display_1bpp", "Expected %d bytes, got %d bytes", expected_size, event->total_data_len);
+        return;
+    }
+
     // unpack and draw incoming pixels to the screen
     for (int group_offset = 0; group_offset < event->data_len; group_offset++) {
         auto total_group_offset = event->current_data_offset + group_offset;
@@ -40,6 +47,13 @@ void display_4bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
         ctx.inkplate.setDisplayMode(DisplayMode::INKPLATE_3BIT);
         ctx.inkplate.clearDisplay();
         ctx.inkplate.display();
+    }
+
+    // check expected payload size
+    auto expected_size = ctx.inkplate.einkWidth() * ctx.inkplate.einkHeight() / 2;
+    if (event->total_data_len != expected_size) {
+        ESP_LOGE("display_4bpp", "Expected %d bytes, got %d bytes", expected_size, event->total_data_len);
+        return;
     }
 
     // unpack and draw incoming pixels to the screen
