@@ -9,12 +9,23 @@
 #include "utils.h"
 
 void display_1bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
+    static int partial_update_counter = 0;
+    static int partial_update_threshold = 10;
+
     // switch to 1 bit mode if not already in it
     if (ctx.inkplate.getDisplayMode() != DisplayMode::INKPLATE_1BIT) {
         ESP_LOGI("display_1bpp", "Switching to 1 bit mode");
         ctx.inkplate.setDisplayMode(DisplayMode::INKPLATE_1BIT);
         ctx.inkplate.clearDisplay();
         ctx.inkplate.display();
+        partial_update_counter = 0;
+    }
+
+    // TODO: this is a workaround for a bug in the Inkplate library and should be put at the end of the function once it is fixed
+    if (partial_update_counter >= partial_update_threshold) {
+        ctx.inkplate.clearDisplay();
+        ctx.inkplate.display();
+        partial_update_counter = 0;
     }
 
     // check expected payload size
@@ -35,8 +46,10 @@ void display_1bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
     }
 
     // display the screen if we have received all the data
+    // TODO: once inkplate.display() works in 1bit mode, it should be used here every threshold-th time
     if (event->current_data_offset + event->data_len == event->total_data_len) {
-        ctx.inkplate.display();
+        ctx.inkplate.partialUpdate();
+        partial_update_counter++;
     }
 }
 
