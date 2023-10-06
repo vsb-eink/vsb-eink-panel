@@ -70,16 +70,13 @@ void MQTTClient::on_connected(const esp_mqtt_event_handle_t event) {
 }
 
 void MQTTClient::on_data(const esp_mqtt_event_handle_t event) {
-    ESP_LOGI("MQTTClient", "Received message on topic %.*s", event->topic_len, event->topic);
-    ESP_LOGI("MQTTClient", "Topic length: %d", event->topic_len);
-    ESP_LOGI("MQTTClient", "Total message length: %d", event->total_data_len);
-    ESP_LOGI("MQTTClient", "Current data offset: %d", event->current_data_offset);
-    ESP_LOGI("MQTTClient", "Message ID: %d", event->msg_id);
-    ESP_LOGI("MQTTClient", "QoS: %d", event->qos);
-    ESP_LOGI("MQTTClient", "Retained: %d", event->retain);
+    static auto current_topic = std::make_pair(-1, std::string{});
+    if (current_topic.first != event->event_id || event->topic_len > 0) {
+        current_topic = std::make_pair(event->event_id, std::string(event->topic, event->topic_len));
+    }
 
     for (const auto& handler : handlers) {
-        if (handler.filter.match(event->topic, event->topic_len)) {
+        if (handler.filter.match(current_topic.second.begin(), current_topic.second.end())) {
             handler.callback(event);
         }
     }
