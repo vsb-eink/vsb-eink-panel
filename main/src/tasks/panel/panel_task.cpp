@@ -18,9 +18,10 @@ void display_1bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
     }
 
     // unpack and draw incoming pixels to the screen
-    for (int group_offset = event->current_data_offset; group_offset < (event->current_data_offset + event->data_len); group_offset++) {
+    for (int group_offset = 0; group_offset < event->data_len; group_offset++) {
+        auto total_group_offset = event->current_data_offset + group_offset;
         for (int pixel_index_in_group = 0; pixel_index_in_group < 8; pixel_index_in_group++) {
-            auto position = get_position_by_index(group_offset * 8 + pixel_index_in_group, ctx.inkplate.einkWidth());
+            auto position = get_position_by_index(total_group_offset * 8 + pixel_index_in_group, ctx.inkplate.einkWidth());
             auto color = (event->data[group_offset] >> pixel_index_in_group) & 1;
             ctx.inkplate.drawPixel(position.x, position.y, color);
         }
@@ -42,9 +43,10 @@ void display_4bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
     }
 
     // unpack and draw incoming pixels to the screen
-    for (int group_offset = event->current_data_offset; group_offset < (event->current_data_offset + event->data_len); group_offset++) {
+    for (int group_offset = 0; group_offset < event->data_len; group_offset++) {
+        auto total_group_offset = event->current_data_offset + group_offset;
         for (int pixel_index_in_group = 0; pixel_index_in_group < 2; pixel_index_in_group++) {
-            auto position = get_position_by_index(group_offset * 2 + pixel_index_in_group, ctx.inkplate.einkWidth());
+            auto position = get_position_by_index(total_group_offset * 2 + pixel_index_in_group, ctx.inkplate.einkWidth());
             auto color = (event->data[group_offset] >> (pixel_index_in_group * 4)) & 0b1111;
             ctx.inkplate.drawPixel(position.x, position.y, color);
         }
