@@ -1,9 +1,8 @@
 name: Build a release
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - '**'
     paths:
       - "version.txt"
 
