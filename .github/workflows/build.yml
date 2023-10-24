@@ -31,13 +31,6 @@ jobs:
           target: esp32
           path: .
 
-      - name: Merge the build artifacts
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: "v${{env.IDF_VERSION}}"
-          target: esp32
-          command: python scripts/pack_firmware.py
-
       - name: Release the build artifacts
         uses: ncipollo/release-action@v1
         with:
