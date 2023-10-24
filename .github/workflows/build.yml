@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '**'
+    paths:
+      - "version.txt"
 
 jobs:
   build:
@@ -13,6 +15,9 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Prepare signing key
+        run: echo "${{ secrets.ESP_SECUREBOOT_SIGNING_KEY }}" > certs/secure_boot_signing_key.pem
 
       - name: Build the project
         uses: espressif/esp-idf-ci-action@v1

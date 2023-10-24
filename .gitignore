@@ -22,3 +22,7 @@ provisioning/images/*
 !provisioning/images/.gitkeep
 !provisioning/images/example.nvs.bin
 !provisioning/example.nvs.csv
+
+# certificates
+certs/*
+!certs/.gitkeep
