@@ -1,10 +1,10 @@
 dependencies:
   espressif/esp-idf-cxx:
-    component_hash: df7921090d6601b268b99b5d54d2f53bb5ea25dbd58cc53961ef7784326621de
+    component_hash: 2fa63e4e725f0c2d3dd6d99da8a91d404b4b49667088b1be0f336eb9c13ff17f
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 1.0.1-beta
+    version: 1.0.2-beta
   espressif/esp_mqtt_cxx:
     component_hash: d65e459793ff320f81b57fbcd451610636e8175dcd33512481420eb476cae5c5
     source:
