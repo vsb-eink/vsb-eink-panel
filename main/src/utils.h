@@ -45,3 +45,5 @@ private:
     const std::function<void()> callback;
     std::chrono::steady_clock::time_point last_state_change;
 };
+
+uint8_t reverse_bits(uint8_t n);

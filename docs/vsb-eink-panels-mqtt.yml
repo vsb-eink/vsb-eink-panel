@@ -1,7 +1,7 @@
 asyncapi: 2.6.0
 info:
   title: VSB E-Ink Panels MQTT
-  version: 1.0.0
+  version: 2.1.0
   description: MQTT API for VSB E-Ink Panels
   license:
     name: MIT
@@ -34,6 +34,27 @@ channels:
       summary: Updates configuration of a panel
       message:
         $ref: "#/components/messages/PanelConfigUpdateMessage"
+
+  vsb-eink/{panelId}/display:
+    description: Topic of a panel display status
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    publish:
+      summary: Publishes the current frame buffer of a panel
+      message:
+        oneOf:
+          - $ref: "#/components/messages/PanelDisplayRaw1BppMessage"
+          - $ref: "#/components/messages/PanelDisplayRaw4BppMessage"
+
+  vsb-eink/{panelId}/display/get:
+    description: Topic for requesting currently active frame buffer of a panel
+    parameters:
+      panelId:
+        $ref: "#/components/parameters/panelId"
+    subscribe:
+      operationId: getPanelDisplay
+      summary: Requests currently active frame buffer of a panel
   
   vsb-eink/{panelId}/display/raw_1bpp/set:
     description: Topic for updating a panel display with 1-bit images
@@ -227,6 +248,10 @@ components:
           type: integer
           minimum: 0
           description: Free heap memory in bytes
+        minFreeHeap:
+          type: integer
+          minimum: 0
+          description: Minimal free heap memory in bytes since last reboot
         firmwareVersion:
           type: string
           description: Version of a firmware
@@ -234,6 +259,7 @@ components:
         - network
         - uptime
         - freeHeap
+        - minFreeHeap
         - firmwareVersion
 
     PanelMqttConfig:

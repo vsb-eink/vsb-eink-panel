@@ -85,6 +85,47 @@ void display_4bpp(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
     }
 }
 
+void get_panel_display(const TaskContext &ctx, const esp_mqtt_event_handle_t event) {
+    using idf::mqtt::Message;
+    using idf::mqtt::QoS;
+    using idf::mqtt::Retain;
+
+    auto panel_id = ctx.config.panel.panel_id;
+    auto get_panel_display_topic = string_format("vsb-eink/%s/display", panel_id.c_str());
+
+    auto is_in_1bit_mode = ctx.inkplate.getDisplayMode() == DisplayMode::INKPLATE_1BIT;
+    auto is_in_3bit_mode = ctx.inkplate.getDisplayMode() == DisplayMode::INKPLATE_3BIT;
+
+    uint8_t *frame_buffer = nullptr;
+    size_t frame_buffer_size = 0;
+    uint8_t *message_buffer = nullptr;
+    size_t message_buffer_size = 0;
+
+    if (is_in_1bit_mode) {
+        frame_buffer = ctx.inkplate._partial->get_data();
+        frame_buffer_size = ctx.inkplate._partial->get_data_size();
+        message_buffer_size = frame_buffer_size;
+        message_buffer = (uint8_t*)malloc(message_buffer_size * sizeof(uint8_t));
+
+        for (int i = 0; i < frame_buffer_size; i++) {
+            message_buffer[i] = reverse_bits(frame_buffer[i]);
+        }
+    }
+
+    if (is_in_3bit_mode) {
+        frame_buffer = ctx.inkplate.DMemory4Bit->get_data();
+        frame_buffer_size = ctx.inkplate.DMemory4Bit->get_data_size();
+        message_buffer_size = frame_buffer_size;
+        message_buffer = frame_buffer;
+    }
+
+    ctx.mqtt.publish(get_panel_display_topic, (char*)message_buffer, (char*)message_buffer + message_buffer_size);
+
+    if (is_in_1bit_mode) {
+        free(message_buffer);
+    }
+}
+
 void panel_task(const TaskContext &ctx) {
     using idf::mqtt::Filter;
     using idf::mqtt::Message;
@@ -122,6 +163,14 @@ void panel_task(const TaskContext &ctx) {
         .filter = Filter(update_panel_display_raw_4bpp_topic),
         .callback = [&](const esp_mqtt_event_handle_t event) {
             display_4bpp(ctx, event);
+        }
+    });
+
+    auto get_panel_display_topic = string_format("vsb-eink/%s/display/get", panel_id.c_str());
+    ctx.mqtt.register_handler({
+        .filter = Filter(get_panel_display_topic),
+        .callback = [&](const esp_mqtt_event_handle_t event) {
+            get_panel_display(ctx, event);
         }
     });
 

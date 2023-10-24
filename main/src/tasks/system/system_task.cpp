@@ -63,6 +63,7 @@ void publish_system_status(const TaskContext &ctx) {
 
     cJSON_AddNumberToObject(system_status_json, "uptime", esp_timer_get_time() / 1000 / 1000);
     cJSON_AddNumberToObject(system_status_json, "freeHeap", esp_get_free_heap_size());
+    cJSON_AddNumberToObject(system_status_json, "minFreeHeap", esp_get_minimum_free_heap_size());
     cJSON_AddStringToObject(system_status_json, "firmwareVersion", esp_app_get_description()->version);
 
     auto system_status_json_str = cJSON_PrintUnformatted(system_status_json);
