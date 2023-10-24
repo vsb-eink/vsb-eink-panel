@@ -38,3 +38,4 @@ jobs:
           artifacts: "build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
           allowUpdates: true
           artifactErrorsFailBuild: true
+          generateReleaseNotes: true
