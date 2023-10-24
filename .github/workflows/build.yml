@@ -16,12 +16,10 @@ jobs:
           submodules: recursive
 
       - name: Get IDF version
-        run: |
-          echo "IDF_VERSION=$(yq \".dependencies.idf.version\" dependencies.lock)" >> "$GITHUB_ENV"
+        run: echo IDF_VERSION="$(yq .dependencies.idf.version dependencies.lock)" >> "$GITHUB_ENV"
 
       - name: Get project version
-        run: |
-          echo "PROJECT_VERSION=$(cat version.txt)" >> "$GITHUB_ENV"
+        run: echo PROJECT_VERSION="$(cat version.txt)" >> "$GITHUB_ENV"
 
       - name: Prepare signing key
         run: echo "${{ secrets.ESP_SECUREBOOT_SIGNING_KEY }}" > certs/secure_boot_signing_key.pem
@@ -29,14 +27,14 @@ jobs:
       - name: Build the project
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: "${{env.IDF_VERSION}}"
+          esp_idf_version: "v${{env.IDF_VERSION }}"
           target: esp32
           path: .
 
       - name: Merge the build artifacts
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: "${{env.IDF_VERSION}}"
+          esp_idf_version: "v${{env.IDF_VERSION}}"
           target: esp32
           command: python scripts/pack_firmware.py
 
