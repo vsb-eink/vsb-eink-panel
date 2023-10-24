@@ -16,6 +16,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Get IDF version
+        run: IDF_VERSION="$(yq \".dependencies.idf.version\" dependencies.lock)" > $GITHUB_ENV
+
+      - name: Get project version
+        run: PROJECT_VERSION="$(cat version.txt)" > $GITHUB_ENV
+
       - name: Prepare signing key
         run: echo "${{ secrets.ESP_SECUREBOOT_SIGNING_KEY }}" > certs/secure_boot_signing_key.pem
 
@@ -29,13 +35,14 @@ jobs:
       - name: Merge the build artifacts
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.0
+          esp_idf_version: "${{env.IDF_VERSION}}"
           target: esp32
           command: python scripts/pack_firmware.py
 
       - name: Release the build artifacts
         uses: ncipollo/release-action@v1
         with:
+          tag: "v${{env.PROJECT_VERSION}}"
           artifacts: "images/*.bin,build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
           allowUpdates: true
           artifactErrorsFailBuild: true
