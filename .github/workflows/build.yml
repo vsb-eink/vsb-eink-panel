@@ -35,6 +35,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: "v${{env.PROJECT_VERSION}}"
-          artifacts: "images/*.bin,build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
+          artifacts: "build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
           allowUpdates: true
           artifactErrorsFailBuild: true
