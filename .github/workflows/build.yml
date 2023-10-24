@@ -29,21 +29,21 @@ jobs:
       - name: Build the project
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: "$IDF_VERSION"
+          esp_idf_version: "${{env.IDF_VERSION}}"
           target: esp32
           path: .
 
       - name: Merge the build artifacts
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: "$IDF_VERSION"
+          esp_idf_version: "${{env.IDF_VERSION}}"
           target: esp32
           command: python scripts/pack_firmware.py
 
       - name: Release the build artifacts
         uses: ncipollo/release-action@v1
         with:
-          tag: "v$PROJECT_VERSION"
+          tag: "v${{env.PROJECT_VERSION}}"
           artifacts: "images/*.bin,build/*.bin,build/bootloader/*.bin,build/partition_table/*.bin"
           allowUpdates: true
           artifactErrorsFailBuild: true
