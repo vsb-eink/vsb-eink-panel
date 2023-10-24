@@ -30,11 +30,16 @@ void perform_ota_update_handler(const esp_mqtt_event_handle_t event) {
     }
 
     esp_http_client_config_t config = {};
-    config.url = data;
+
+    std::string data_str(data, data_len);
+    config.url = data_str.c_str();
     config.crt_bundle_attach = esp_crt_bundle_attach;
+    config.buffer_size = 1024 * 2;
+    config.buffer_size_tx = 1024;
 
     esp_https_ota_config_t ota_config = {};
     ota_config.http_config = &config;
+    ota_config.partial_http_download = true;
 
     ESP_LOGI(TAG, "Starting OTA update from %s", data);
     esp_err_t ret = esp_https_ota(&ota_config);
