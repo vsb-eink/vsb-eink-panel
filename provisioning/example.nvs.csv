@@ -2,9 +2,10 @@ key,type,encoding,value
 eeprom,namespace,,
 eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAAAAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
 vsb_eink,namespace,,
-wifi_ssid_a,data,string,"TUONET-IOT"
-wifi_pass_a,data,string,""
+panel_id,data,string,"my_panel"
+wifi_ssid_a,data,string,"tuonet-iot"
+wifi_pass_a,data,string,"password"
 wifi_ssid_b,data,string,"Home-Wifi"
-wifi_pass_b,data,string,""
+wifi_pass_b,data,string,"password"
 broker_url_a,data,string,"mqtt://192.168.1.164:1883"
 broker_url_b,data,string,"mqtt://192.168.1.164:1883"

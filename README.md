@@ -1,34 +1,76 @@
-# Hello World in native esp-idf
+# VSB-EInk - Firmware
 
-The purpose of this example is to show how to use the ESP-IDF-InkPlate library without using Platformio SDK.
+This repository contains the firmware for the VSB-EInk project. The firmware is written in C++ and is based on the [esp-idf]() and the [ESP-IDF-Inkplate]() library.
 
-The program will only display a message "Hello World" in the center of the screen and then exit the program. It includes freertos, idf and inkplate headers and can stand as a simple test whether your esp-idf installation is working correctly.
+## Getting started
 
-**The example was tested only with ESP-IDF version 4.4.1.** However, as the library and example itself were made as universal as they could, past and future versions should work as well. If not, please open a new [issue](https://github.com/turgu1/ESP-IDF-InkPlate/issues) and let us know.
+### Prerequisites
 
-## Configuration
+* git
+* esp-idf v5.0.*
 
-`sdkconfig` should be already preconfigured for the Inkplate 10 device. To change your Inkplate variant, go to `Component config --> Inkplate --> Choose your Inkplate variant` and change it accordingly.
+### Project setup
 
-## Installation
+1. Clone the repository and its submodules
+    ```bash
+    git clone --recurse-submodules git@github.com:vsb-eink/vsb-eink-panel.git
+   ```
+2. Load the esp-idf environment
+    ```bash
+    # if already set up get_idf alias
+    get_idf
+   
+    # POSIX shell
+    . "$IDF_PATH/export.sh"
+   
+    # Fish shell
+    . "$IDF_PATH/export.fish"
+    ```
 
-Either download the Inkplate library or link it as a git submodule and place it in the components/ folder.
+## Signed images
 
-```sh
-# to make it a submodule of your repository
-git submodule add -b master https://github.com/turgu1/ESP-IDF-InkPlate.git components/inkplate
+The project has an automated firmware image build pipeline which builds the firmware and signs it with our own private key. Each time a project version is bumped in `version.txt`, pipeline build/signs and releases its build artifacts as a new GitHub release. These releases can then be used to either flash a new panel or update an existing panel over the air.
 
-# or
+### Flashing a new panel
 
-# to use a specific version of the library, modify the submodule's branch accordingly
-git submodule add -b v0.9.6 https://github.com/turgu1/ESP-IDF-InkPlate.git components/inkplate
+1. Download the latest release from the [releases page](https://github.com/vsb-eink/vsb-eink-panel/releases/latest). Specifically, you need the following files:
+    * bootloader.bin
+    * partition-table.bin
+    * ota_data_initial.bin
+    * vsb-eink-panel.bin
+2. Flash the images using the following command (taken from the official idf.py cli)
+   ```bash
+   esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0xd000 build/ota_data_initial.bin 0x10000 build/vsb-eink-panel.bin
+   ```
+
+## Panel provisioning
+
+Firmware builds are deployment agnostic. Each panel has the same firmware image and differs only in its NVS partition.
+
+To simplify the process of provisioning, the project contains a [python script](./scripts/provision_panel.py) which takes a CSV file as input and either generates an NVS partition image or flashes the data directly to the panel.
+
+### Example CSV file
+```csv
+key,type,encoding,value
+eeprom,namespace,,
+eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAAAAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
+vsb_eink,namespace,,
+panel_id,data,string,"ec4"
+wifi_ssid_a,data,string,"tuonet-iot"
+wifi_pass_a,data,string,"password"
+wifi_ssid_b,data,string,"Home-Wifi"
+wifi_pass_b,data,string,"password"
+broker_url_a,data,string,"mqtt://192.168.1.164:1883"
+broker_url_b,data,string,"mqtt://192.168.1.164:1883"
 ```
 
-## Compile and run
+As you can see, each option has an A and B variant. The panel will try to use to the A variant first and if that fails, it will try the B variant.
 
-With `idf` loaded in your environment, you can manage your project like any other `esp-idf` project. For further details please follow the official [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/tools/idf-py.html).
-
-```sh
-# change your device port based on your actual device
-idf.py -p COM4 build flash monitor
+### Provisioning a panel with a CSV file
+```bash
+python scripts/provision_panel.py --flash path/to/config.csv
 ```
+
+## Panel status
+
+Once the panel is correctly configured and booted up, it will periodically publish an MQTT message on the topic `vsb-eink/:panel_id/system`. You can either subcribe to this topic manually (`vsb-eink/+/status`) or use an MQTT client like [MQTT Explorer](https://mqtt-explorer.com/) to monitor all the project's messages.
