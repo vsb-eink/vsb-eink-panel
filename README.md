@@ -40,7 +40,7 @@ The project has an automated firmware image build pipeline which builds the firm
     * vsb-eink-panel.bin
 2. Flash the images using the following command (taken from the official idf.py cli)
    ```bash
-   esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0xd000 build/ota_data_initial.bin 0x10000 build/vsb-eink-panel.bin
+   esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x10000 vsb-eink-panel.bin
    ```
 
 ## Panel provisioning
