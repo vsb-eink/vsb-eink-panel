@@ -50,7 +50,7 @@ def main():
 
     args = args_parser.parse_args()
 
-    nvs_partition_file = tempfile.NamedTemporaryFile(suffix='.bin') if args.flash else Path(args.output)
+    nvs_partition_file = tempfile.NamedTemporaryFile(suffix='.bin', mode="w", delete=False) if args.flash else Path(args.output)
 
     try:
         subprocess.check_call([PYTHON, NVS_PARTITION_GEN_PY, 'generate', args.nvs_config, nvs_partition_file.name, "0x4000"])
